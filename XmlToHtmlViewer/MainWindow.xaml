@@ -1,0 +1,95 @@
+<Window x:Class="XmlToHtmlViewer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="XML 报告查看器" Height="700" Width="1000"
+        AllowDrop="True" Drop="Window_Drop" DragOver="Window_DragOver">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 菜单栏 -->
+        <Menu Grid.Row="0">
+            <MenuItem Header="_文件">
+                <MenuItem Header="打开 XML..." Click="OpenFile_Click" InputGestureText="Ctrl+O"/>
+                <MenuItem Header="退出" Click="Exit_Click"/>
+            </MenuItem>
+            <MenuItem Header="_帮助">
+                <MenuItem Header="关于" Click="About_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- 标签页控件：关闭按钮在右侧 -->
+        <TabControl x:Name="TabContainer" Grid.Row="1" Margin="5"
+                    Background="Transparent" BorderBrush="Gray" BorderThickness="1">
+                   
+
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TabItem">
+                                <Grid x:Name="Root">
+                                    <Border 
+                                        x:Name="Border"
+                                        Background="LightGray"
+                                        BorderBrush="DarkGray"
+                                        BorderThickness="1,1,1,0"
+                                        CornerRadius="4,4,0,0"
+                                        Padding="10,4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ContentPresenter x:Name="ContentSite"
+                                                              ContentSource="Header"
+                                                              VerticalAlignment="Center"/>
+                                            <Button x:Name="CloseButton"
+        Content="×"
+        FontSize="12" FontWeight="Bold"
+        Width="20" Height="20" Margin="10,0,0,0"
+        Padding="0" Click="CloseButton_Click"
+        ToolTip="关闭"
+        Background="Transparent"
+        BorderBrush="LightGray"
+        Foreground="DarkRed">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <!-- 如果 Header 是 "+ 新建"，隐藏关闭按钮 -->
+                                                            <DataTrigger Binding="{Binding Path=Header, RelativeSource={RelativeSource AncestorType=TabItem}}" Value="+ 新建">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="White"/>
+                                        <Setter TargetName="Border" Property="BorderThickness" Value="1,1,1,0"/>
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="WhiteSmoke"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TabControl.Resources>
+
+            <!-- "+ 新建"标签页 -->
+            <TabItem Header="+ 新建" PreviewMouseDown="NewTab_Click"/>
+        </TabControl>
+
+        <!-- 状态栏 -->
+        <StatusBar Grid.Row="2" Height="25">
+            <TextBlock x:Name="StatusText" Text="欢迎使用 XML 报告查看器" />
+        </StatusBar>
+    </Grid>
+</Window>
