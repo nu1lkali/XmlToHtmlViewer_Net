@@ -1,5 +1,0 @@
-;!@Install@!UTF-8!
-Title="XmlToHtmlViewer"
-BeginPrompt="您确定要安装 XmlToHtmlViewer 吗？"
-RunProgram="XmlToHtmlViewer_Single.exe"
-;!@InstallEnd@!
