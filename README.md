@@ -94,7 +94,6 @@ XML报告查看器的核心功能是通过以下步骤实现的：
 ### .NET Framework 4.8版本
 - Windows 7 SP1 或更高版本
 - .NET Framework 4.8（大多数Windows 10和Windows 11系统已预装）
-- 文件大小：约22KB
 
 ## 安装与部署
 
@@ -269,8 +268,6 @@ A: 可以从Microsoft官方网站下载并安装.NET Framework 4.8运行时：
 A: .NET Framework 4.8有以下优势：
    - 预装在大多数Windows系统中，用户无需额外安装
    - 稳定性高，兼容性好
-   - 应用程序体积小（约22KB），分发方便
-   - 不需要额外的运行时环境
 
 **Q: 应用程序是否支持其他平台？**
 A: 当前版本仅支持Windows平台，基于.NET Framework 4.8开发。

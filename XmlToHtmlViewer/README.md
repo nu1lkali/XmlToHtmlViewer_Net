@@ -94,7 +94,6 @@ XML报告查看器的核心功能是通过以下步骤实现的：
 ### .NET Framework 4.8版本
 - Windows 7 SP1 或更高版本
 - .NET Framework 4.8（大多数Windows 10和Windows 11系统已预装）
-- 文件大小：约22KB
 
 ## 安装与部署
 
