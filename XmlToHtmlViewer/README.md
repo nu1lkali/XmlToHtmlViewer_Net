@@ -32,7 +32,7 @@ XML报告查看器的核心功能是通过以下步骤实现的：
    - 解析XSL文件的相对路径并转换为绝对路径
 
 3. **XSLT转换执行**：
-   - 使用.NET的`XslCompiledTransform`类加载XSL文件
+   - 使用.NET Framework 4.8的`XslCompiledTransform`类加载XSL文件
    - 将XML文件作为输入，应用XSL转换规则
    - 生成转换后的HTML内容
 
@@ -47,10 +47,10 @@ XML报告查看器的核心功能是通过以下步骤实现的：
 ┌─────────────────────────────────────────────────────────────┐
 │                    MainWindow (主窗口)                        │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-│  │   HomeTab       │  │  HtmlTabItem    │  │  + 新建     │ │
-│  │   (首页)        │  │  (HTML标签页)   │  │  (添加标签) │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │   HomeTab       │  │  HtmlTabItem    │  │   + 新建       │ │
+│  │   (首页)        │  │  (HTML标签页)   │  │  (添加标签)     │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -84,23 +84,33 @@ XML报告查看器的核心功能是通过以下步骤实现的：
 - **错误处理**：提供详细的错误信息，帮助用户诊断问题
 - **剪贴板操作**：支持复制内容到剪贴板，便于粘贴到Excel等应用
 - **命令行支持**：可通过命令行参数直接打开XML文件
+- **临时文件管理**：自动清理临时HTML文件，也可手动清理
+- **轻量级设计**：基于.NET Framework 4.8，无需额外安装运行时
 
 ---
 
 ## 系统要求
 
-### .NET Framework 4.8版本（推荐）
-- Windows操作系统
-- .NET Framework 4.8（大多数Windows系统已预装）
+### .NET Framework 4.8版本
+- Windows 7 SP1 或更高版本
+- .NET Framework 4.8（大多数Windows 10和Windows 11系统已预装）
 - 文件大小：约22KB
 
 ## 安装与部署
 
-### .NET Framework 4.8版本（推荐）
+### .NET Framework 4.8版本
 1. 下载发布文件：`XmlToHtmlViewer.exe`和`XmlToHtmlViewer.exe.config`
 2. 直接运行`XmlToHtmlViewer.exe`
 
+### 如何检查是否已安装.NET Framework 4.8
+可以通过以下方式检查：
+- 在PowerShell中运行：`Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP' -Recurse | Get-ItemProperty -Name Version -EA 0 | Where { $_.PSChildName -match '^(Full|Client)$' } | Select PSChildName, Version`
+- 或在控制面板的"程序和功能"中查看已安装的程序
 
+### 如果没有安装.NET Framework 4.8
+可以从Microsoft官方网站下载并安装.NET Framework 4.8运行时：
+- 下载地址：https://dotnet.microsoft.com/download/dotnet-framework/net48
+- 或通过Windows Update更新系统
 
 ## 使用说明
 
@@ -113,7 +123,7 @@ XML报告查看器的核心功能是通过以下步骤实现的：
 2. **打开XML文件**：
    - 方法一：直接将XML文件拖入应用程序窗口
    - 方法二：点击"+ 新建"标签页，选择"打开文件"按钮
-   - 方法三：通过菜单栏的"文件" > "打开"选项
+   - 方法三：通过菜单栏的"文件" > "打开 XML..."选项
 
 3. **查看转换结果**：
    - 应用程序将自动检测XML文件中的XSL样式表引用
@@ -138,6 +148,10 @@ XML报告查看器的核心功能是通过以下步骤实现的：
 3. **命令行参数**：
    - 程序支持通过命令行参数直接打开XML文件
    - 示例：`XmlToHtmlViewer.exe "C:\path\to\your\file.xml"`
+
+4. **清空缓存**：
+   - 通过菜单栏的"文件" > "清空缓存"选项，可以手动清理所有临时HTML文件
+   - 关闭标签页或退出应用程序时，系统会自动清理对应的临时文件
 
 ---
 
@@ -178,6 +192,7 @@ XmlToHtmlViewer/
 - 调用XslTransformer执行转换
 - 创建临时HTML文件
 - 使用WebBrowser控件加载和显示HTML内容
+- 管理临时文件的生命周期
 
 #### MainWindow.xaml.cs
 主窗口逻辑控制器，主要功能包括：
@@ -186,6 +201,7 @@ XmlToHtmlViewer/
 - 实现文件打开对话框
 - 处理应用程序菜单命令
 - 管理应用程序状态
+- 处理临时文件的清理
 
 ---
 
@@ -199,35 +215,86 @@ XmlToHtmlViewer/
 
 ---
 
+## 临时文件管理
+
+应用程序在处理XML文件时会生成临时HTML文件，这些文件存储在系统临时目录中（文件名格式为`xml_viewer_*.html`）。应用程序提供了两种清理临时文件的方式：
+
+1. **手动清理**：通过菜单栏的"文件" -> "清空缓存"选项，可以立即清理所有临时文件。清理后会显示已删除的文件数量。
+
+2. **自动清理**：
+   - 关闭单个标签页时，会自动清理该标签页对应的临时文件
+   - 关闭应用程序时，会自动清理所有临时文件
+
+这种设计既保证了应用程序的正常运行，又避免了临时文件占用过多磁盘空间。
+
+---
+
 ## 常见问题
 
-### Q: 应用程序无法启动
-A: 请确保您的系统满足系统要求。如果使用.NET 8框架依赖版本，请确保已安装.NET 8运行时。如果使用.NET Framework 4.8版本，大多数Windows系统已预装，无需额外安装。
+**Q: 为什么我的XML文件无法正确显示？**
+A: 请检查XML文件是否格式正确，以及是否包含正确的XSL样式表引用。如果问题仍然存在，请查看控制台输出或日志文件以获取更多错误信息。
 
-### Q: XML文件无法正确转换
-A: 请检查以下几点：
-- XML文件格式是否正确
-- XML文件中是否包含正确的XSL样式表引用
-- XSL文件路径是否正确（相对于XML文件的位置）
-- XSL文件是否存在
+**Q: 支持哪些XML格式？**
+A: 支持所有符合W3C标准的XML文件，特别是包含XSL样式表引用的XML文件。
 
-### Q: 转换后的HTML显示乱码
-A: 这可能是由于编码问题导致的。应用程序会自动检测XML文件编码，但如果检测失败，可以尝试：
-- 确保XML文件包含正确的编码声明（如`<?xml version="1.0" encoding="UTF-8"?>`）
-- 检查XSL文件中的编码设置
+**Q: 可以同时打开多个XML文件吗？**
+A: 是的，应用程序支持多标签页操作，可以同时打开和查看多个XML文件。
 
+**Q: 生成的HTML表格可以复制到Excel吗？**
+A: 是的，应用程序生成的HTML表格支持复制到Excel，保持格式和结构。
 
-### Q: 支持哪些类型的XML文件
-A: 理论上支持所有包含XSL样式表引用的XML文件，特别适用于：
-- ATML（Automatic Test Markup Language）测试报告
-- JUnit测试报告
-- TestNG测试报告
-- 其他自定义格式的结构化XML数据
+**Q: 支持哪些编码格式？**
+A: 应用程序自动检测并支持UTF-8、UTF-16 LE和UTF-16 BE编码的XML文件。
+
+**Q: 如何通过命令行打开XML文件？**
+A: 可以通过命令行参数指定XML文件路径，例如：`XmlToHtmlViewer.exe "path\to\your\file.xml"`。
+
+**Q: 支持拖放操作吗？**
+A: 是的，支持将XML文件直接拖放到应用程序窗口中打开。
+
+**Q: 为什么需要.NET Framework 4.8？**
+A: .NET Framework 4.8是Windows系统上最稳定、兼容性最好的.NET Framework版本，预装在大多数Windows 10和Windows 11系统中。
+
+**Q: 如何知道我的系统是否安装了.NET Framework 4.8？**
+A: 可以通过以下方式检查：
+   - 在PowerShell中运行：`Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP' -Recurse | Get-ItemProperty -Name Version -EA 0 | Where { $_.PSChildName -match '^(Full|Client)$' } | Select PSChildName, Version`
+   - 或在控制面板的"程序和功能"中查看已安装的程序
+
+**Q: 如果没有安装.NET Framework 4.8怎么办？**
+A: 可以从Microsoft官方网站下载并安装.NET Framework 4.8运行时：
+   - 下载地址：https://dotnet.microsoft.com/download/dotnet-framework/net48
+   - 或通过Windows Update更新系统
+
+**Q: 为什么选择.NET Framework 4.8？**
+A: .NET Framework 4.8有以下优势：
+   - 预装在大多数Windows系统中，用户无需额外安装
+   - 稳定性高，兼容性好
+   - 应用程序体积小（约22KB），分发方便
+   - 不需要额外的运行时环境
+
+**Q: 应用程序是否支持其他平台？**
+A: 当前版本仅支持Windows平台，基于.NET Framework 4.8开发。
+
+**Q: 临时文件会自动清理吗？**
+A: 是的，应用程序提供了两种清理临时文件的方式：
+   - 自动清理：关闭标签页或退出应用程序时自动清理
+   - 手动清理：通过"文件" -> "清空缓存"菜单项手动清理所有临时文件
+
+**Q: 临时文件存储在哪里？**
+A: 临时文件存储在系统临时目录中（可通过`%TEMP%`环境变量访问），文件名格式为`xml_viewer_*.html`。
+
+**Q: 如何手动清理临时文件？**
+A: 可以通过应用程序菜单栏的"文件" -> "清空缓存"选项，或直接删除系统临时目录中的`xml_viewer_*.html`文件。
+
+**Q: 清空缓存功能有什么作用？**
+A: 清空缓存功能可以立即删除所有由应用程序创建的临时HTML文件，释放磁盘空间，并确保下次打开文件时使用最新的转换结果。
 
 ---
 
 ## 项目运行截图
 
 ![XML报告查看器界面](https://img.erpweb.eu.org/imgs/2025/10/024c5dfc5d77c0df.png)
+
+---
 
 

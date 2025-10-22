@@ -36,6 +36,10 @@ namespace XmlToHtmlViewer
             TabContainer.Items.Insert(0, homeTab); // 插入最前面
             TabContainer.SelectedItem = homeTab; // 设置首页为选中状态
 
+            // 注册拖拽事件处理程序
+            TabContainer.Drop += TabContainer_Drop;
+            TabContainer.DragOver += TabContainer_DragOver;
+            
             LoadStartupFile(); // 检查是否有传参打开文件
             
             // 在所有初始化完成后添加事件处理程序
@@ -55,35 +59,10 @@ namespace XmlToHtmlViewer
             }
         }
 
-        private void Window_DragOver(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                if (files.Length > 0 && Path.GetExtension(files[0]).Equals(".xml", StringComparison.OrdinalIgnoreCase))
-                {
-                    e.Effects = DragDropEffects.Copy;
-                }
-            }
-            e.Handled = true;
-        }
-
-        private void Window_Drop(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                string path = files[0];
-                if (Path.GetExtension(path).Equals(".xml", StringComparison.OrdinalIgnoreCase))
-                {
-                    OpenFileAsTab(path);
-                }
-            }
-        }
-
-        private void OpenFileAsTab(string filePath)
+        public void OpenFileAsTab(string filePath)
         {
             string header = Path.GetFileName(filePath);
+            System.Diagnostics.Debug.WriteLine($"OpenFileAsTab: 开始处理文件 {header}");
             
             var tab = new TabItem
             {
@@ -92,9 +71,11 @@ namespace XmlToHtmlViewer
             };
 
             // 插入到 "+ 新建" 标签之前
+            System.Diagnostics.Debug.WriteLine($"OpenFileAsTab: 插入新标签页，当前标签页数量: {TabContainer.Items.Count}");
             TabContainer.Items.Insert(TabContainer.Items.Count - 1, tab);
             TabContainer.SelectedItem = tab;
             UpdateStatus(filePath);
+            System.Diagnostics.Debug.WriteLine($"OpenFileAsTab: 标签页已添加，当前标签页数量: {TabContainer.Items.Count}");
         }
 
         internal void NewTab_Click(object sender, MouseButtonEventArgs e)
@@ -155,6 +136,13 @@ namespace XmlToHtmlViewer
             // 确保不能关闭首页标签页和"+ 新建"标签页
             if (tabItem != null && tabItem != TabContainer.Items[TabContainer.Items.Count - 1] && tabItem != TabContainer.Items[0])
             {
+                // 关闭标签页前清理临时文件
+                HtmlTabItem htmlTabItem = tabItem.Content as HtmlTabItem;
+                if (htmlTabItem != null)
+                {
+                    htmlTabItem.CleanupTempFile();
+                }
+                
                 TabContainer.Items.Remove(tabItem);
                 
                 // 如果关闭后只剩首页和"+ 新建"标签页，则选中首页
@@ -165,6 +153,87 @@ namespace XmlToHtmlViewer
                 
                 StatusText.Text = "欢迎使用 XML 报告查看器";
             }
+        }
+
+        private void ClearCache_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 清理当前打开的所有标签页的临时文件
+                int cleanedCount = 0;
+                foreach (TabItem tab in TabContainer.Items)
+                {
+                    HtmlTabItem htmlTabItem = tab.Content as HtmlTabItem;
+                    if (htmlTabItem != null)
+                    {
+                        if (!string.IsNullOrEmpty(htmlTabItem.TempHtmlPath) && File.Exists(htmlTabItem.TempHtmlPath))
+                        {
+                            File.Delete(htmlTabItem.TempHtmlPath);
+                            htmlTabItem.TempHtmlPath = null;
+                            cleanedCount++;
+                        }
+                    }
+                }
+                
+                // 清理临时目录中所有由程序创建的临时HTML文件
+                string tempPath = Path.GetTempPath();
+                string[] tempFiles = Directory.GetFiles(tempPath, "xml_viewer_*.html");
+                foreach (string file in tempFiles)
+                {
+                    try
+                    {
+                        File.Delete(file);
+                        cleanedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine("删除临时文件失败: " + ex.Message);
+                    }
+                }
+                
+                MessageBox.Show($"已清理 {cleanedCount} 个临时文件", "清空缓存", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("清空缓存失败: " + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            // 应用程序关闭时清理所有临时文件
+            foreach (TabItem tab in TabContainer.Items)
+            {
+                HtmlTabItem htmlTabItem = tab.Content as HtmlTabItem;
+                if (htmlTabItem != null)
+                {
+                    htmlTabItem.CleanupTempFile();
+                }
+            }
+            
+            // 清理临时目录中所有由程序创建的临时HTML文件
+            try
+            {
+                string tempPath = Path.GetTempPath();
+                string[] tempFiles = Directory.GetFiles(tempPath, "xml_viewer_*.html");
+                foreach (string file in tempFiles)
+                {
+                    try
+                    {
+                        File.Delete(file);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine("应用程序关闭时删除临时文件失败: " + ex.Message);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("应用程序关闭时清理临时文件失败: " + ex.Message);
+            }
+            
+            base.OnClosed(e);
         }
 
         private void TabContainer_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -202,6 +271,42 @@ namespace XmlToHtmlViewer
             }
         }
 
+        private void TabContainer_DragOver(object sender, DragEventArgs e)
+        {
+            // 检查拖拽的数据是否包含文件
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+        }
+
+        private void TabContainer_Drop(object sender, DragEventArgs e)
+        {
+            // 标记事件已处理，防止进一步传播
+            e.Handled = true;
+            
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                System.Diagnostics.Debug.WriteLine($"TabControl_Drop: 收到 {files.Length} 个文件");
+                
+                foreach (string path in files)
+                {
+                    if (Path.GetExtension(path).Equals(".xml", StringComparison.OrdinalIgnoreCase))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"TabControl_Drop: 处理文件 {path}");
+                        
+                        // 直接调用OpenFileAsTab方法创建新标签页
+                        OpenFileAsTab(path);
+                    }
+                }
+            }
+        }
+
         private static T FindAncestor<T>(DependencyObject current) where T : class
         {
             while (current != null)
@@ -212,11 +317,6 @@ namespace XmlToHtmlViewer
                 current = VisualTreeHelper.GetParent(current);
             }
             return null;
-        }
-
-        protected override void OnClosed(EventArgs e)
-        {
-            base.OnClosed(e);
         }
     }
 }
