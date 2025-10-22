@@ -1,7 +1,6 @@
-﻿<UserControl x:Class="XmlToHtmlViewer.HtmlTabItem"
+<UserControl x:Class="XmlToHtmlViewer.HtmlTabItem"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:cef="clr-namespace:CefSharp.Wpf;assembly=CefSharp.Wpf"
              Height="Auto" Width="Auto">
     <Grid>
         <Grid.RowDefinitions>
@@ -15,6 +14,6 @@
             <Button Content="🔄 刷新" Click="Refresh_Click" Margin="2,0"/>
         </StackPanel>
 
-        <cef:ChromiumWebBrowser x:Name="Browser" Grid.Row="1" />
+        <WebBrowser x:Name="Browser" Grid.Row="1" />
     </Grid>
 </UserControl>

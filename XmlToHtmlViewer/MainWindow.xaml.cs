@@ -1,22 +1,30 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
-using CefSharp;
-using CefSharp.Wpf;
 
 namespace XmlToHtmlViewer
 {
     public partial class MainWindow : Window
     {
+        // Win32 API声明
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr GetStdHandle(int nStdHandle);
+        
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool SetConsoleOutputCP(uint wCodePageID);
+        
         public MainWindow()
         {
             InitializeComponent();
-            InitializeCef();
+
+            // 设置控制台输出编码为UTF-8
+            SetConsoleOutputCP(65001);
 
             // 添加首页（第一个 Tab）
             var homeTab = new TabItem
@@ -32,12 +40,6 @@ namespace XmlToHtmlViewer
             
             // 在所有初始化完成后添加事件处理程序
             TabContainer.SelectionChanged += TabContainer_SelectionChanged;
-        }
-
-        private void InitializeCef()
-        {
-            var settings = new CefSettings();
-            Cef.Initialize(settings);
         }
 
         private void LoadStartupFile()
@@ -82,6 +84,7 @@ namespace XmlToHtmlViewer
         private void OpenFileAsTab(string filePath)
         {
             string header = Path.GetFileName(filePath);
+            
             var tab = new TabItem
             {
                 Header = header,
@@ -99,11 +102,34 @@ namespace XmlToHtmlViewer
             var ofd = new OpenFileDialog
             {
                 Filter = "XML 文件 (*.xml)|*.xml|所有文件|*.*",
-                Title = "选择 XML 文件"
+                Title = "选择 XML 文件",
+                CheckFileExists = true,
+                CheckPathExists = true,
+                Multiselect = false
             };
-            if (ofd.ShowDialog() == true)
+            
+            // 设置初始目录为当前目录或用户文档目录
+            ofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            
+            try
             {
-                OpenFileAsTab(ofd.FileName);
+                if (ofd.ShowDialog() == true)
+                {
+                    string filePath = ofd.FileName;
+                    
+                    if (File.Exists(filePath))
+                    {
+                        OpenFileAsTab(filePath);
+                    }
+                    else
+                    {
+                        MessageBox.Show("选择的文件不存在: " + filePath, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("选择文件时发生错误: " + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -190,7 +216,6 @@ namespace XmlToHtmlViewer
 
         protected override void OnClosed(EventArgs e)
         {
-            Cef.Shutdown();
             base.OnClosed(e);
         }
     }
